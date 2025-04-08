@@ -1,0 +1,270 @@
+.container {
+    max-width: 95%;
+    margin: 2rem auto;
+    padding: 0 1rem;
+}
+
+.search-box {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+#cityInput {
+    flex: 1;
+    width: 70%;
+    padding: 0.5rem;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+#searchButton {
+    padding: 0.5rem 1rem;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#searchButton:hover {
+    background-color: #45a049;
+}
+
+.weather-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.weather-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.forecast-container {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.input-wrapper {
+    position: relative;
+    flex: 1;
+}
+
+.suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ccc;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    display: none;
+    z-index: 1000;
+}
+
+.suggestion-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+}
+
+.suggestion-item:hover {
+    background-color: #f0f0f0;
+}
+
+.city-title {
+    text-align: center;
+    margin: 1rem 0;
+    font-size: 1.5rem;
+    color: #333;
+}
+
+.weather-card.today {
+    background: #f0f8ff;
+    border: 2px solid #51cceb;
+}
+
+.weather-card h3 {
+    margin-top: 0;
+    color: #333;
+    font-size: 1.2rem;
+}
+
+.weather-card p {
+    margin: 0.5rem 0;
+    color: #666;
+}
+
+.error-message {
+    color: #721c24;
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: 4px;
+    text-align: center;
+}
+
+.weather-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+@media (max-width: 768px) {
+    .forecast-container {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    .forecast-container {
+        grid-template-columns: 1fr;
+    }
+}
+
+.suggestion-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+}
+
+.suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.suggestion-item small {
+    color: #666;
+    font-size: 0.8em;
+}
+
+.suggestion-item:hover {
+    background-color: #f0f0f0;
+}
+
+.details-button {
+    margin-top: 1rem;
+    padding: 0.5rem 1rem;
+    background-color: #f0f0f0;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.details-button:hover {
+    background-color: #e0e0e0;
+}
+
+.hourly-item {
+    padding: 0.5rem;
+    text-align: center;
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+
+.hourly-item .hour {
+    font-weight: bold;
+    color: #666;
+}
+
+.hourly-item .temp {
+    color: #d35400;
+}
+
+.hourly-item .wind {
+    color: #2980b9;
+    font-size: 0.9em;
+}
+
+.hourly-item img {
+    width: 40px;
+    height: 40px;
+}
+
+.weather-card {
+    transition: all 0.3s ease;
+}
+
+.weather-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.weather-card {
+    cursor: pointer;
+    position: relative;
+    padding-bottom: 2rem;
+    transition: all 0.3s ease;
+}
+
+
+.expand-indicator {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #666;
+    font-size: 12px;
+    transition: all 0.3s ease;
+}
+
+.weather-card.expanded {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.hourly-details {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+}
+
+.hourly-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    gap: 0.5rem;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.hourly-details {
+    grid-column: 1 / -1; /* Розтягуємо на всю ширину grid-контейнера */
+    margin-top: 1rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    display: none;
+}
+
+.hourly-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 1rem;
+    padding: 1rem;
+}
+
+.weather-card.active {
+    border: 2px solid #4CAF50;
+    background: #f0f8ff;
+    transform: translateY(-4px);
+}
+
+.weather-card {
+    transition: transform 0.3s ease, border-color 0.3s ease;
+}

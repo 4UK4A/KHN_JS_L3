@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Погода</title>
+    <link rel="stylesheet" href="styles/style.css">
+    <script src="https://unpkg.com/rxjs@7/dist/bundles/rxjs.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="search-box">
+            <div class="input-wrapper">
+                <input type="text" id="cityInput" placeholder="Введіть назву міста">
+                <div id="suggestions" class="suggestions"></div>
+            </div>
+            <button id="searchButton">Отримати прогноз</button>
+        </div>
+        <div class="weather-info">
+            <div id="currentWeather" class="weather-card"></div>
+            <div id="forecast" class="forecast-container"></div>
+        </div>
+    </div>
+    <script src="scripts/jweather.js" type="module"></script>
+</body>
+</html>
