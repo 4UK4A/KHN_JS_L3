@@ -1,5 +1,4 @@
-
-const API_KEY = 'YOUR_API_KEY_HERE';
+const API_KEY = 'e6cf98556a90a9fc46aca473b598e1ed';
 const BASE_URL = 'https://api.openweathermap.org/data/2.5';
 
 // Get DOM elements
@@ -9,8 +8,30 @@ const currentWeather = document.getElementById('currentWeather');
 const forecast = document.getElementById('forecast');
 const suggestionsDiv = document.getElementById('suggestions');
 
+// Функція для показу/приховання індикатора завантаження
+function toggleLoader(show, message = 'Завантаження...') {
+    let loader = document.querySelector('.loader-container');
+    
+    if (show) {
+        if (!loader) {
+            loader = document.createElement('div');
+            loader.className = 'loader-container fade-in';
+            loader.innerHTML = `
+                <div class="loader"></div>
+                <div class="loader-text">${message}</div>
+            `;
+            document.body.appendChild(loader);
+        }
+    } else if (loader) {
+        loader.classList.add('fade-out');
+        setTimeout(() => loader.remove(), 300);
+    }
+}
+
 // Replace cityCoordinates object with getCityCoordinates function
 const getCityCoordinates = async (cityName) => {
+    toggleLoader(true, 'Пошук міста...');
+    
     console.log('1. Starting city search for:', cityName);
 
     // Normalize input and ensure proper encoding
@@ -27,14 +48,14 @@ const getCityCoordinates = async (cityName) => {
             }), {
                 headers: {
                     'Accept-Language': 'uk,en',
-                    'User-Agent': 'WeatherApp/1.0'  // Required by Nominatim
+                    'User-Agent': 'WeatherApp/1.0'
                 }
             }
         );
         
         if (!response.ok) {
             console.error('Response status:', response.status);
-            console.error('Response text:', await response.text());
+            console.error('Response text:', await response.text());            
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         
@@ -43,10 +64,11 @@ const getCityCoordinates = async (cityName) => {
 
         if (!data || data.length === 0) {
             console.log('3. No results found for:', normalizedName);
+            showError(`Місто "${cityName}" не знайдено`);
             return [];
         }
 
-        // Rest of the function remains the same
+        
         const cities = data
             .filter(place => {
                 const isSettlement = place.type === 'city' || 
@@ -103,7 +125,10 @@ const getCityCoordinates = async (cityName) => {
 
     } catch (error) {
         console.error('7. Error fetching cities:', error);
+        showError('Error fetching cities', error);
         return [];
+    } finally {
+        toggleLoader(false);
     }
 };
 
@@ -145,12 +170,86 @@ const search$ = buttonClick$.pipe(
     })
 );
 
+// Функція для відображення помилок
+function showError(message, error = null) {
+    // Логуємо в консоль з додатковими деталями
+    console.error('Error occurred:', message);
+    if (error) {
+        console.error('Error details:', error);
+        console.error('Stack trace:', error.stack);
+    }
+
+    
+
+    // Перевіряємо тип помилки
+    let errorMessage = message;
+    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        errorMessage = 'Помилка мережі. Перевірте підключення до інтернету.';
+    }
+
+    // Створюємо елемент для відображення помилки
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'error-message';
+    errorDiv.innerHTML = `
+        <strong>⚠️ Помилка:</strong> ${errorMessage}
+        ${error?.message ? `<br><small>${error.message}</small>` : ''}
+    `;
+    
+    // Вставляємо повідомлення про помилку перед контейнером погоди
+    const weatherInfo = document.querySelector('.weather-info');
+    weatherInfo.insertAdjacentElement('beforebegin', errorDiv);
+    
+    // Видаляємо повідомлення через 5 секунд
+    setTimeout(() => errorDiv.remove(), 5000);
+}
+
+// Оновлюємо функцію handleFetchError
+function handleFetchError(error, context) {
+    console.error(`Error in ${context}:`, error);
+    
+    let errorMessage = 'Невідома помилка';
+    
+    if (!navigator.onLine) {
+        errorMessage = 'Відсутнє підключення до інтернету. Перевірте мережу.';
+    } else if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        errorMessage = 'Помилка мережі. Перевірте підключення до інтернету.';
+    } else {
+        errorMessage = `Помилка при ${context}: ${error.message}`;
+    }
+    
+    showError(errorMessage, error);
+}
+
+// Оновлюємо всі fetch запити
+function fetchWeatherData(params, cityName) {
+    toggleLoader(true, `Отримуємо погоду для ${cityName}...`);
+    
+    return fetch(`${BASE_URL}/forecast?${new URLSearchParams(params)}`)
+        .then(res => {
+            if (!res.ok) {
+                throw new Error(`HTTP error! status: ${res.status}`);
+            }
+            return res.json();
+        })
+        .then(data => ({
+            ...data,
+            cityName: cityName
+        }))
+        .catch(error => {
+            handleFetchError(error, 'отриманні погоди');
+            throw error; // Перекидаємо помилку далі
+        })
+        .finally(() => {
+            toggleLoader(false);
+        });
+}
+
 // Subscribe to results
 search$.subscribe({
     next: (data) => {
         displayWeatherData(data, data.cityName);
     },
-    error: err => console.error('Error fetching weather:', err)
+    error: err => showError('Помилка отримання погоди', err)
 });
 
 // Modify input handling for suggestions
@@ -160,7 +259,7 @@ input$.pipe(
     rxjs.operators.switchMap(value => 
         rxjs.from(getCityCoordinates(value)).pipe(
             rxjs.operators.catchError(error => {
-                console.error('Error fetching cities:', error);
+                showError('Помилка пошуку міста', error);
                 return rxjs.of([]);
             })
         )
@@ -182,6 +281,93 @@ input$.pipe(
     }
 });
 
+// Додаємо функціонал історії пошуку
+const MAX_HISTORY_ITEMS = 5;
+let searchHistory = [];
+
+// Функція для збереження пошуку в історію
+function addToHistory(cityData) {
+    const historyItem = {
+        city: cityData.name,
+        lat: cityData.lat,
+        lng: cityData.lng,
+        timestamp: new Date().toISOString()
+    };
+
+    // Додаємо новий запит на початок масиву
+    searchHistory.unshift(historyItem);
+    
+    // Обмежуємо кількість елементів
+    if (searchHistory.length > MAX_HISTORY_ITEMS) {
+        searchHistory = searchHistory.slice(0, MAX_HISTORY_ITEMS);
+    }
+
+    // Зберігаємо в localStorage
+    localStorage.setItem('weatherSearchHistory', JSON.stringify(searchHistory));
+    
+    // Оновлюємо відображення історії
+    updateHistoryDisplay();
+}
+
+// Функція для відображення історії
+function updateHistoryDisplay() {
+    const historyList = document.getElementById('historyList');
+    historyList.innerHTML = searchHistory
+        .map(item => {
+            const date = new Date(item.timestamp);
+            return `
+                <div class="history-item" 
+                     data-lat="${item.lat}" 
+                     data-lng="${item.lng}"
+                     data-city="${item.city}">
+                    <span class="city">${item.city}</span>
+                    <span class="time">${date.toLocaleTimeString()}</span>
+                </div>
+            `;
+        })
+        .join('');
+}
+
+// Завантажуємо історію при старті
+document.addEventListener('DOMContentLoaded', () => {
+    const savedHistory = localStorage.getItem('weatherSearchHistory');
+    if (savedHistory) {
+        searchHistory = JSON.parse(savedHistory);
+        updateHistoryDisplay();
+    }
+});
+
+// Додаємо обробник кліків по елементам історії
+rxjs.fromEvent(document.getElementById('historyList'), 'click')
+    .pipe(
+        rxjs.operators.filter(e => e.target.closest('.history-item')),
+        rxjs.operators.map(e => {
+            const item = e.target.closest('.history-item');
+            return {
+                name: item.dataset.city,
+                lat: parseFloat(item.dataset.lat),
+                lng: parseFloat(item.dataset.lng)
+            };
+        })
+    )
+    .subscribe(city => {
+        cityInput.value = city.name;
+        toggleLoader(true, `Отримуємо погоду для ${city.name}...`);
+        
+        const params = {
+            lat: city.lat,
+            lon: city.lng,
+            appid: API_KEY,
+            units: 'metric',
+            lang: 'ua'
+        };
+
+        fetchWeatherData(params, city.name)
+            .then(data => displayWeatherData(data, city.name))
+            .catch(error => console.error('Failed to update weather from history:', error))
+            .finally(() => toggleLoader(false));
+    });
+
 // Modify suggestion click handling
 rxjs.fromEvent(suggestionsDiv, 'click')
     .pipe(
@@ -195,16 +381,21 @@ rxjs.fromEvent(suggestionsDiv, 'click')
     .subscribe(city => {
         cityInput.value = city.name;
         suggestionsDiv.style.display = 'none';
-        // Modify search to use selected coordinates
-        fetch(`${BASE_URL}/forecast?${new URLSearchParams({
+        
+        // Додаємо місто в історію
+        addToHistory(city);
+        
+        const params = {
             lat: city.lat,
             lon: city.lng,
             appid: API_KEY,
             units: 'metric',
             lang: 'ua'
-        })}`)
-        .then(res => res.json())
-        .then(data => displayWeatherData(data, city.name));
+        };
+
+        fetchWeatherData(params, city.name)
+            .then(data => displayWeatherData(data, city.name))
+            .catch(error => console.error('Failed to update weather from suggestions:', error));
     });
 
 // Close suggestions when clicking outside
@@ -395,3 +586,111 @@ function formatDate(date) {
     };
     return date.toLocaleDateString('uk-UA', options);
 }
+
+// Створюємо потік для автоматичного оновлення кожні 10 хвилин
+const autoRefresh$ = rxjs.interval(10 * 60 * 1000).pipe(
+    rxjs.operators.filter(() => {
+        // Перевіряємо чи є активне місто для оновлення
+        const cityName = cityInput.value;
+        console.log('Checking for auto-refresh:', { cityName });
+        return cityName.length > 0;
+    }),
+    rxjs.operators.switchMap(() => {
+        console.log('Auto-refreshing weather data...');
+        const cityName = cityInput.value;
+        return rxjs.from(getCityCoordinates(cityName)).pipe(
+            rxjs.operators.map(cities => cities[0]),
+            rxjs.operators.filter(city => city !== undefined)
+        );
+    }),
+    rxjs.operators.switchMap(coords => {
+        console.log('Fetching updated weather for:', coords.name);
+        const params = {
+            lat: coords.lat,
+            lon: coords.lng,
+            appid: API_KEY,
+            units: 'metric',
+            lang: 'ua'
+        };
+
+        return rxjs.from(
+            fetch(`${BASE_URL}/forecast?${new URLSearchParams(params)}`)
+                .then(res => res.json())
+                .then(data => ({
+                    ...data,
+                    cityName: coords.name
+                }))
+        );
+    })
+);
+
+// Підписуємося на автооновлення
+const autoRefreshSubscription = autoRefresh$.subscribe({
+    next: (data) => {
+        console.log('Auto-refresh: Updating weather data');
+        displayWeatherData(data, data.cityName);
+        
+        const notification = document.createElement('div');
+        notification.className = 'update-notification';
+        notification.textContent = `Дані оновлено: ${new Date().toLocaleTimeString()}`;
+        document.querySelector('.weather-info').prepend(notification);
+        setTimeout(() => notification.remove(), 3000);
+    },
+    error: err => {
+        showError('Помилка автооновлення', err);
+        toggleLoader(false);
+    }
+});
+
+// Додаємо слухач для онлайн/офлайн статусу
+window.addEventListener('online', () => {
+    showError('З\'єднання з мережею відновлено', null);
+    if (cityInput.value) {
+        // Оновлюємо погоду, якщо було вибране місто
+        const event = new Event('click');
+        searchButton.dispatchEvent(event);
+    }
+});
+
+window.addEventListener('offline', () => {
+    showError('Втрачено з\'єднання з мережею', null);
+});
+
+// Додаємо CSS для покращення відображення помилок
+const style = document.createElement('style');
+style.textContent = `
+    .error-message {
+        color: #721c24;
+        background-color: #f8d7da;
+        border: 1px solid #f5c6cb;
+        padding: 1rem;
+        margin: 1rem 0;
+        border-radius: 4px;
+        text-align: center;
+        animation: slideIn 0.3s ease-out;
+        position: relative;
+    }
+
+    .error-message strong {
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+
+    .error-message small {
+        display: block;
+        color: #856404;
+        margin-top: 0.5rem;
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateY(-20px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+`;
+document.head.appendChild(style);
